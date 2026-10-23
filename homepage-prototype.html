@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AARON — 个人主页 / 立体构成原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --ink:        #0d0a0a;
+  --surface:    #161112;
+  --surface-2:  #1d1516;
+  --surface-3:  #251a1b;
+  --oxblood:    #4c1417;
+  --oxblood-2:  #5e1a1c;
+  --red:        #a02c27;
+  --red-bright: #cf4632;
+  --bone:       #ede4d6;
+  --muted:      #a08c84;
+  --faint:      #6c5b55;
+  --ochre:      #c89241;
+  --green:      #7fa86a;
+  --line:       rgba(237,228,214,.13);
+  --line-strong:rgba(237,228,214,.28);
+
+  --font-display: "Archivo Black", "Noto Sans SC", sans-serif;
+  --font-sans:    "Noto Sans SC", sans-serif;
+  --font-mono:    "IBM Plex Mono", "Noto Sans SC", monospace;
+
+  --u: 8px;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+html{ scroll-behavior:smooth; }
+
+body{
+  background:var(--ink);
+  color:var(--bone);
+  font-family:var(--font-sans);
+  font-size:15px;
+  line-height:1.7;
+  overflow-x:hidden;
+  text-rendering:optimizeLegibility;
+}
+
+::selection{ background:var(--red); color:var(--bone); }
+
+a{ color:inherit; text-decoration:none; }
+
+:focus-visible{
+  outline:2px solid var(--ochre);
+  outline-offset:3px;
+}
+
+/* grain overlay — decorative */
+.grain{
+  position:fixed; inset:0; z-index:90; pointer-events:none;
+  opacity:.055; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* registration marks — decorative */
+.reg{
+  position:fixed; width:18px; height:18px; z-index:80; pointer-events:none;
+  opacity:.4;
+}
+.reg::before, .reg::after{
+  content:""; position:absolute; background:var(--faint);
+}
+.reg::before{ left:50%; top:0; width:1px; height:100%; }
+.reg::after{ top:50%; left:0; height:1px; width:100%; }
+.reg.tl{ top:14px; left:14px; }
+.reg.tr{ top:14px; right:14px; }
+.reg.bl{ bottom:14px; left:14px; }
+.reg.br{ bottom:14px; right:14px; }
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.topbar{
+  position:sticky; top:0; z-index:70;
+  display:flex; align-items:stretch;
+  background:rgba(13,10,10,.88);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.brand{
+  display:flex; align-items:center; gap:12px;
+  padding:0 24px; min-height:60px;
+  background:var(--oxblood);
+  border-right:1px solid var(--line);
+  position:relative;
+}
+.brand::after{ /* fractured corner on brand plane */
+  content:""; position:absolute; top:0; right:-13px;
+  border-top:60px solid var(--oxblood);
+  border-right:13px solid transparent;
+}
+.brand .mark{
+  font-family:var(--font-display);
+  font-size:19px; letter-spacing:.06em; line-height:1;
+}
+.brand .mark em{ font-style:normal; color:var(--red-bright); }
+.brand .sub{
+  font-family:var(--font-mono); font-size:10px;
+  letter-spacing:.22em; color:var(--muted); text-transform:uppercase;
+}
+.topnav{
+  display:flex; align-items:center; gap:2px; padding:0 18px; flex:1;
+}
+.topnav a{
+  font-family:var(--font-mono); font-size:11.5px;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted);
+  padding:8px 13px; min-height:44px; display:flex; align-items:center;
+  border:1px solid transparent;
+  transition:color .2s, border-color .2s, background .2s;
+}
+.topnav a:hover{ color:var(--bone); border-color:var(--line-strong); background:var(--surface-2); }
+.topnav a .idx{ color:var(--faint); margin-right:8px; font-size:10px; }
+.clock{
+  display:flex; flex-direction:column; justify-content:center;
+  padding:0 24px; border-left:1px solid var(--line);
+  font-family:var(--font-mono); font-size:11px; color:var(--muted);
+  letter-spacing:.12em; text-align:right;
+}
+.clock b{ color:var(--bone); font-weight:500; font-size:13px; letter-spacing:.08em; }
+
+/* ============================================================
+   HERO — fractured cubist composition
+   ============================================================ */
+.hero{
+  position:relative;
+  min-height:clamp(560px, 82vh, 860px);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 360px;
+  overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.hero-planes{ position:absolute; inset:-8% -4%; pointer-events:none; }
+.plane{ position:absolute; will-change:transform; }
+.p1{ /* big oxblood diagonal */
+  top:-12%; left:-6%; width:58%; height:86%;
+  background:linear-gradient(160deg, var(--oxblood) 0%, var(--oxblood-2) 55%, transparent 56%);
+  clip-path:polygon(0 0, 100% 0, 62% 100%, 0 78%);
+}
+.p2{ /* red slice */
+  top:8%; left:30%; width:42%; height:104%;
+  background:linear-gradient(200deg, rgba(160,44,39,.55), rgba(160,44,39,.06));
+  clip-path:polygon(38% 0, 100% 12%, 74% 100%, 0 68%);
+  mix-blend-mode:screen;
+}
+.p3{ /* dark plane lower-left */
+  bottom:-14%; left:-4%; width:52%; height:56%;
+  background:var(--surface-2);
+  clip-path:polygon(0 22%, 78% 0, 100% 100%, 0 100%);
+}
+.p4{ /* thin ochre cut */
+  top:18%; left:6%; width:46%; height:2px;
+  background:var(--ochre); transform:rotate(-24deg); transform-origin:left;
+  opacity:.85;
+}
+.p5{ /* rotated outline square */
+  top:12%; right:16%; width:300px; height:300px;
+  border:1px solid rgba(207,70,50,.4); transform:rotate(45deg);
+}
+.p6{ /* small filled square */
+  bottom:18%; left:44%; width:74px; height:74px;
+  background:var(--red); transform:rotate(45deg); opacity:.5;
+}
+
+.hero-main{
+  position:relative; z-index:5;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  padding:clamp(32px, 6vw, 88px);
+  padding-bottom:clamp(40px, 6vw, 80px);
+}
+.hero-kicker{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--ochre);
+  display:flex; align-items:center; gap:14px; margin-bottom:26px;
+}
+.hero-kicker::before{ content:""; width:56px; height:1px; background:var(--ochre); }
+
+.hero-title{
+  position:relative;
+  font-family:var(--font-display);
+  font-size:clamp(64px, 12vw, 176px);
+  line-height:.84;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+}
+.hero-title .layer{
+  position:absolute; inset:0; pointer-events:none;
+}
+.hero-title .l1{ color:var(--red); transform:translate(-10px, 8px); opacity:.55; clip-path:polygon(0 0, 100% 0, 100% 46%, 0 58%); }
+.hero-title .l2{ color:var(--oxblood-2); transform:translate(12px, -6px); opacity:.8; clip-path:polygon(0 55%, 100% 40%, 100% 100%, 0 100%); }
+
+.hero-sub{
+  margin-top:30px;
+  max-width:520px;
+  font-size:16.5px; line-height:1.9; color:var(--muted);
+}
+.hero-sub b{ color:var(--bone); font-weight:700; }
+
+.hero-actions{ display:flex; gap:14px; margin-top:38px; flex-wrap:wrap; }
+.btn{
+  display:inline-flex; align-items:center; gap:14px;
+  min-height:52px; padding:0 26px;
+  font-family:var(--font-mono); font-size:12px;
+  letter-spacing:.22em; text-transform:uppercase;
+  border:1px solid var(--line-strong);
+  color:var(--bone); background:transparent;
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  cursor:pointer;
+  transition:background .22s, border-color .22s, transform .22s;
+}
+.btn .arw{ color:var(--red-bright); transition:transform .22s; }
+.btn:hover{ background:var(--oxblood); border-color:var(--red); transform:translateY(-2px); }
+.btn:hover .arw{ transform:translateX(5px); }
+.btn.primary{
+  background:var(--red); border-color:var(--red);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.btn.primary .arw{ color:var(--bone); }
+.btn.primary:hover{ background:var(--red-bright); border-color:var(--red-bright); }
+
+/* hero aside — NOW plate */
+.hero-aside{
+  position:relative; z-index:5;
+  display:flex; align-items:flex-end; justify-content:flex-end;
+  padding:clamp(24px, 4vw, 56px);
+}
+.now-plate{
+  width:100%; max-width:320px;
+  background:rgba(29,21,22,.92);
+  border:1px solid var(--line-strong);
+  padding:26px 24px 22px;
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 22px 22px, 22px calc(100% - 22px), 0 calc(100% - 22px));
+  transform:rotate(-1.2deg);
+}
+.now-plate .tag{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.3em;
+  color:var(--red-bright); text-transform:uppercase;
+  display:flex; justify-content:space-between;
+}
+.now-plate h3{
+  margin:16px 0 8px; font-size:19px; font-weight:900; line-height:1.5;
+}
+.now-plate p{ font-size:13px; color:#c2ada4; line-height:1.85; }
+.now-plate .meter{
+  display:flex; gap:5px; margin-top:18px;
+}
+.now-plate .meter i{
+  width:12px; height:12px; background:var(--surface-3); display:block;
+}
+.now-plate .meter i.on{ background:var(--red); }
+
+/* ============================================================
+   TICKER — diagonal marquee band
+   ============================================================ */
+.ticker{
+  position:relative;
+  background:var(--oxblood);
+  border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  overflow:hidden;
+  transform:rotate(-.6deg) scale(1.01);
+  margin:34px 0;
+}
+.ticker-track{
+  display:flex; white-space:nowrap;
+  animation:marquee 38s linear infinite;
+}
+.ticker-track span{
+  font-family:var(--font-mono); font-size:12px;
+  letter-spacing:.32em; text-transform:uppercase;
+  padding:13px 0; color:rgba(237,228,214,.75);
+}
+.ticker-track span em{ font-style:normal; color:var(--ochre); padding:0 26px; }
+@keyframes marquee{
+  from{ transform:translateX(0); }
+  to{ transform:translateX(-50%); }
+}
+
+/* ============================================================
+   FACETS — fractured grid
+   ============================================================ */
+.section-head{
+  display:flex; align-items:baseline; gap:22px;
+  padding:0 clamp(20px, 4vw, 64px);
+  margin-bottom:26px;
+}
+.section-head .no{
+  font-family:var(--font-mono); font-size:12px; color:var(--red-bright); letter-spacing:.28em;
+}
+.section-head h2{
+  font-family:var(--font-display); font-size:clamp(24px, 3.4vw, 40px);
+  text-transform:uppercase; letter-spacing:.01em; line-height:1.1;
+}
+.section-head .rule{ flex:1; height:1px; background:var(--line); }
+.section-head .note{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
+  color:var(--faint); text-transform:uppercase;
+}
+
+.facets{
+  display:grid;
+  grid-template-columns:repeat(12, 1fr);
+  gap:18px;
+  padding:0 clamp(20px, 4vw, 64px) 20px;
+}
+.facet{
+  position:relative;
+  background:var(--surface);
+  border:1px solid var(--line);
+  padding:30px 30px 28px;
+  overflow:hidden;
+  transition:transform .3s cubic-bezier(.2,.7,.2,1), border-color .3s, background .3s;
+}
+.facet:hover{
+  transform:translateY(-5px);
+  border-color:rgba(207,70,50,.5);
+  background:var(--surface-2);
+}
+.facet .fno{
+  position:absolute; top:16px; right:18px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.26em; color:var(--faint);
+}
+.facet .label{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.32em;
+  text-transform:uppercase; color:var(--red-bright); margin-bottom:12px;
+  display:flex; align-items:center; gap:10px;
+}
+.facet .label::before{ content:""; width:20px; height:2px; background:var(--red); }
+.facet h3{
+  font-size:clamp(21px, 2.3vw, 29px); font-weight:900; line-height:1.28;
+  letter-spacing:.01em; margin-bottom:12px;
+}
+.facet .desc{ font-size:13.5px; color:var(--muted); line-height:1.9; max-width:46ch; }
+
+/* asymmetric spans — cubist fracture */
+.f-projects { grid-column:span 7; background:var(--surface-2); clip-path:polygon(0 0, 100% 0, 100% 100%, 26px 100%, 0 calc(100% - 26px)); }
+.f-services { grid-column:span 5; background:var(--oxblood); }
+.f-probes   { grid-column:span 12; background:var(--surface-2); padding-bottom:26px; }
+.f-now      { grid-column:span 4;  margin-top:-26px; background:var(--surface-3); }
+.f-journal  { grid-column:span 5;  margin-top:14px; }
+.f-lab      { grid-column:span 3;  margin-top:-40px; background:var(--surface-3); }
+
+/* projects list */
+.proj-list{ margin-top:22px; border-top:1px solid var(--line); }
+.proj{
+  display:grid; grid-template-columns:44px 1fr auto auto;
+  align-items:center; gap:18px;
+  padding:15px 6px 15px 0;
+  border-bottom:1px solid var(--line);
+  transition:background .22s, padding-left .22s;
+  cursor:pointer;
+}
+.proj:hover{ background:rgba(207,70,50,.09); padding-left:10px; }
+.proj .pno{ font-family:var(--font-mono); font-size:11px; color:var(--faint); letter-spacing:.16em; }
+.proj .pname{ font-weight:700; font-size:16px; }
+.proj .pname span{ display:block; font-family:var(--font-mono); font-size:10.5px; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; font-weight:400; margin-top:3px; }
+.proj .ptag{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.18em;
+  border:1px solid var(--line-strong); padding:4px 10px; color:var(--muted);
+  text-transform:uppercase;
+}
+.proj .parw{ color:var(--red-bright); font-family:var(--font-mono); transition:transform .22s; }
+.proj:hover .parw{ transform:translateX(6px); }
+
+/* services — private */
+.f-services .label{ color:var(--ochre); }
+.f-services .label::before{ background:var(--ochre); }
+.svc-badge{
+  position:absolute; top:0; right:0;
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.3em;
+  background:var(--ink); color:var(--ochre);
+  padding:7px 14px 7px 20px;
+  clip-path:polygon(14px 0, 100% 0, 100% 100%, 0 100%);
+}
+.svc-list{ list-style:none; margin-top:20px; }
+.svc-list li{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 2px; border-bottom:1px solid rgba(237,228,214,.16);
+  font-size:14.5px;
+}
+.svc-list li em{
+  font-style:normal; font-family:var(--font-mono); font-size:10px;
+  letter-spacing:.22em; color:rgba(237,228,214,.55); text-transform:uppercase;
+}
+
+/* probes monitor strip */
+.probe-top{
+  display:flex; align-items:baseline; gap:24px; flex-wrap:wrap;
+}
+.probe-summary{
+  display:flex; gap:26px; margin-left:auto; align-items:center;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
+  color:var(--muted); text-transform:uppercase;
+}
+.probe-summary b{ color:var(--bone); font-size:15px; letter-spacing:.06em; }
+.probe-refresh{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--red-bright);
+  background:none; border:1px solid rgba(207,70,50,.45);
+  padding:9px 16px; cursor:pointer; min-height:38px;
+  transition:background .2s;
+}
+.probe-refresh:hover{ background:rgba(207,70,50,.16); }
+
+.probe-grid{
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:22px;
+}
+.probe{
+  background:var(--ink); border:1px solid var(--line);
+  padding:18px 18px 16px; position:relative;
+  transition:border-color .25s;
+}
+.probe:hover{ border-color:rgba(207,70,50,.45); }
+.probe .st{
+  position:absolute; top:16px; right:16px;
+  width:9px; height:9px; background:var(--green);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+.probe.warn .st{ background:var(--ochre); }
+.probe.down .st{ background:var(--faint); animation:none; }
+@keyframes pulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(127,168,106,.5); }
+  55%{ box-shadow:0 0 0 7px rgba(127,168,106,0); }
+}
+.probe h4{ font-size:15px; font-weight:700; }
+.probe .meta{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.16em;
+  color:var(--faint); text-transform:uppercase; margin-top:3px;
+}
+.probe .rows{ margin-top:14px; display:flex; flex-direction:column; gap:9px; }
+.prow{
+  display:grid; grid-template-columns:38px 1fr 34px;
+  align-items:center; gap:10px;
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.12em;
+  color:var(--muted); text-transform:uppercase;
+}
+.blocks{ display:flex; gap:3px; }
+.blocks i{
+  width:9px; height:11px; background:var(--surface-3); display:block;
+}
+.blocks i.on{ background:var(--red); }
+.blocks i.hot{ background:var(--ochre); }
+.prow .val{ text-align:right; color:var(--bone); }
+
+/* now / journal / lab facets */
+.tagrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:18px; }
+.tagpill{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted);
+  border:1px solid var(--line-strong); padding:6px 11px;
+}
+.tagpill.hot{ color:var(--red-bright); border-color:rgba(207,70,50,.5); }
+
+.journal-list{ list-style:none; margin-top:18px; }
+.journal-list li{
+  display:grid; grid-template-columns:88px 1fr; gap:16px;
+  padding:11px 0; border-bottom:1px solid var(--line);
+  font-size:14px;
+}
+.journal-list time{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em;
+  color:var(--faint); padding-top:3px;
+}
+
+.lab-glyphs{
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:20px;
+}
+.lab-glyphs div{
+  aspect-ratio:1; border:1px solid var(--line); position:relative; overflow:hidden;
+}
+.lab-glyphs div::after{
+  content:""; position:absolute; inset:0;
+  background:var(--red); opacity:.28; transition:opacity .3s, transform .4s;
+}
+.lab-glyphs div:nth-child(1)::after{ clip-path:polygon(0 0, 100% 0, 0 100%); }
+.lab-glyphs div:nth-child(2)::after{ clip-path:polygon(100% 0, 100% 100%, 0 100%); }
+.lab-glyphs div:nth-child(3)::after{ clip-path:polygon(0 0, 100% 0, 100% 46%, 0 60%); }
+.lab-glyphs div:nth-child(4)::after{ clip-path:polygon(0 40%, 100% 20%, 100% 100%, 0 100%); background:var(--ochre); }
+.lab-glyphs div:nth-child(5)::after{ clip-path:polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lab-glyphs div:nth-child(6)::after{ clip-path:polygon(0 0, 100% 0, 100% 100%, 40% 100%); background:var(--oxblood-2); }
+.lab-glyphs div:hover::after{ opacity:.62; transform:scale(1.14) rotate(6deg); }
+
+/* ============================================================
+   SPECIMEN band — design components showcase
+   ============================================================ */
+.specimen{
+  margin:70px 0 0;
+  background:var(--surface-2);
+  border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  padding:56px clamp(20px, 4vw, 64px) 60px;
+  position:relative;
+}
+.spec-grid{
+  display:grid; grid-template-columns:repeat(12, 1fr); gap:18px; margin-top:32px;
+}
+.spec-block{ border:1px solid var(--line); padding:22px; background:var(--surface); }
+.spec-block.w4{ grid-column:span 4; }
+.spec-block.w3{ grid-column:span 3; }
+.spec-block.w5{ grid-column:span 5; }
+.spec-block .cap{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.3em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:16px;
+}
+.swatches{ display:flex; flex-direction:column; gap:8px; }
+.swatch{ display:flex; align-items:center; gap:12px; font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; color:var(--muted); }
+.swatch i{ width:44px; height:22px; display:block; }
+.type-spec .huge{
+  font-family:var(--font-display); font-size:56px; line-height:.95; text-transform:uppercase;
+}
+.type-spec .mid{ font-family:var(--font-display); font-size:26px; margin-top:12px; text-transform:uppercase; }
+.type-spec .mono{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.24em;
+  color:var(--muted); text-transform:uppercase; margin-top:12px;
+}
+.motif{
+  position:relative; height:120px;
+}
+.motif .sq{
+  position:absolute; border:1px solid var(--red); width:70px; height:70px;
+}
+.motif .sq:nth-child(1){ transform:rotate(45deg); left:20px; top:22px; }
+.motif .sq:nth-child(2){ background:var(--oxblood); border-color:transparent; left:62px; top:22px; transform:rotate(45deg); mix-blend-mode:screen; }
+.motif .bar{ position:absolute; left:0; bottom:12px; width:82%; height:2px; background:var(--ochre); transform:rotate(-8deg); }
+.motif .tri{
+  position:absolute; right:6px; top:10px; width:0; height:0;
+  border-left:36px solid transparent; border-right:36px solid transparent;
+  border-bottom:62px solid rgba(207,70,50,.5);
+}
+
+/* ============================================================
+   COLOPHON
+   ============================================================ */
+.colophon{
+  display:grid; grid-template-columns:1fr auto;
+  gap:28px; align-items:end;
+  padding:56px clamp(20px, 4vw, 64px) 46px;
+}
+.colophon h2{
+  font-family:var(--font-display); font-size:clamp(30px, 5vw, 64px);
+  text-transform:uppercase; line-height:.98;
+}
+.colophon h2 em{ font-style:normal; color:var(--red); }
+.colophon .meta{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.22em;
+  color:var(--faint); text-transform:uppercase; text-align:right; line-height:2.2;
+}
+.colophon .meta a:hover{ color:var(--red-bright); }
+
+/* reveal on scroll */
+.reveal{ opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.in{ opacity:1; transform:none; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:1080px){
+  .hero{ grid-template-columns:1fr; min-height:auto; }
+  .hero-aside{ justify-content:flex-start; padding-top:0; }
+  .now-plate{ max-width:420px; transform:none; }
+  .f-projects{ grid-column:span 12; }
+  .f-services{ grid-column:span 12; }
+  .f-now{ grid-column:span 6; margin-top:0; }
+  .f-journal{ grid-column:span 6; margin-top:0; }
+  .f-lab{ grid-column:span 12; margin-top:0; }
+  .probe-grid{ grid-template-columns:repeat(2, 1fr); }
+  .spec-block.w4, .spec-block.w3, .spec-block.w5{ grid-column:span 12; }
+}
+@media (max-width:680px){
+  .topnav{ display:none; }
+  .clock{ margin-left:auto; }
+  .hero-title{ font-size:clamp(52px, 17vw, 96px); }
+  .f-now, .f-journal{ grid-column:span 12; }
+  .probe-grid{ grid-template-columns:1fr; }
+  .colophon{ grid-template-columns:1fr; }
+  .colophon .meta{ text-align:left; }
+  .proj{ grid-template-columns:32px 1fr auto; }
+  .proj .ptag{ display:none; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation:none !important; transition:none !important; }
+  .reveal{ opacity:1; transform:none; }
+  html{ scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="reg tl" aria-hidden="true"></div>
+<div class="reg tr" aria-hidden="true"></div>
+<div class="reg bl" aria-hidden="true"></div>
+<div class="reg br" aria-hidden="true"></div>
+
+<!-- ============ TOPBAR ============ -->
+<header class="topbar">
+  <a class="brand" href="#top">
+    <span class="mark">AARON<em>.</em></span>
+    <span class="sub">Personal<br>Homepage</span>
+  </a>
+  <nav class="topnav" aria-label="主导航">
+    <a href="#projects"><span class="idx">01</span>项目与作品</a>
+    <a href="#services"><span class="idx">02</span>我的服务</a>
+    <a href="#probes"><span class="idx">03</span>设备探针</a>
+    <a href="#now"><span class="idx">04</span>现在</a>
+    <a href="#journal"><span class="idx">05</span>手记</a>
+  </nav>
+  <div class="clock">
+    <b id="clock-time">--:--:--</b>
+    <span id="clock-date">CST +08:00</span>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-planes" id="planes" aria-hidden="true">
+    <div class="plane p1" data-depth="14"></div>
+    <div class="plane p2" data-depth="26"></div>
+    <div class="plane p3" data-depth="8"></div>
+    <div class="plane p4" data-depth="34"></div>
+    <div class="plane p5" data-depth="20"></div>
+    <div class="plane p6" data-depth="42"></div>
+  </div>
+
+  <div class="hero-main">
+    <p class="hero-kicker">Cubist Composition · 立体构成原型 v1</p>
+    <h1 class="hero-title">
+      <span class="layer l1" aria-hidden="true">AARON</span>
+      <span class="layer l2" aria-hidden="true">AARON</span>
+      AARON
+    </h1>
+    <p class="hero-sub">
+      一个人的<b>控制台</b>与<b>展柜</b>。<br>
+      在这里：作品向外展示，服务向内自用，<br>
+      设备的状态沿探针回传 —— 全部收进同一幅构成里。
+    </p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#projects">进入项目与作品 <span class="arw">→</span></a>
+      <a class="btn" href="#probes">查看设备状态 <span class="arw">→</span></a>
+    </div>
+  </div>
+
+  <aside class="hero-aside">
+    <div class="now-plate">
+      <div class="tag"><span>Now · 现在</span><span id="now-time">15:20</span></div>
+      <h3>正在打磨 MARS 的<br>预算引擎 v2</h3>
+      <p>同时维护：本地语音识别服务、Obsidian 同步中枢。日间写代码，深夜写字。</p>
+      <div class="meter" aria-hidden="true">
+        <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+        <i class="on"></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<!-- ============ TICKER ============ -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track" id="ticker">
+    <span>
+      Projects <em>◆</em> Services <em>◆</em> Probes <em>◆</em> Journal <em>◆</em> Lab
+      <em>◆</em> 构成 / COMPOSITION <em>◆</em> 暗红 / OXBLOOD <em>◆</em>
+      一切状态皆可探针 <em>◆</em> Works in progress <em>◆</em>
+    </span>
+    <span>
+      Projects <em>◆</em> Services <em>◆</em> Probes <em>◆</em> Journal <em>◆</em> Lab
+      <em>◆</em> 构成 / COMPOSITION <em>◆</em> 暗红 / OXBLOOD <em>◆</em>
+      一切状态皆可探针 <em>◆</em> Works in progress <em>◆</em>
+    </span>
+  </div>
+</div>
+
+<!-- ============ FACETS ============ -->
+<div class="section-head reveal">
+  <span class="no">SEC / 01</span>
+  <h2>入口 · Facets</h2>
+  <span class="rule"></span>
+  <span class="note">非对称构成 / 12-col fracture grid</span>
+</div>
+
+<div class="facets">
+
+  <!-- 01 项目与作品 -->
+  <article class="facet f-projects reveal" id="projects">
+    <span class="fno">01 / 06</span>
+    <p class="label">Projects &amp; Works · 对外</p>
+    <h3>项目与作品</h3>
+    <p class="desc">对外的展柜。挑过的、拿得出手的、想被看见的都在这里 —— 长期项目与一次性实验并排陈列。</p>
+    <div class="proj-list">
+      <a class="proj" href="#">
+        <span class="pno">P-01</span>
+        <span class="pname">MARS<span>Personal Finance · Python / FastAPI</span></span>
+        <span class="ptag">持续迭代</span>
+        <span class="parw">→</span>
+      </a>
+      <a class="proj" href="#">
+        <span class="pno">P-02</span>
+        <span class="pname">ASR-Server<span>Local Speech Recognition · faster-whisper</span></span>
+        <span class="ptag">已上线</span>
+        <span class="parw">→</span>
+      </a>
+      <a class="proj" href="#">
+        <span class="pno">P-03</span>
+        <span class="pname">Obsidian Sync Hub<span>Self-hosted Sync · CouchDB / Caddy</span></span>
+        <span class="ptag">已上线</span>
+        <span class="parw">→</span>
+      </a>
+      <a class="proj" href="#">
+        <span class="pno">P-04</span>
+        <span class="pname">Tech-Note<span>Knowledge Base · 写作与实践记录</span></span>
+        <span class="ptag">随笔</span>
+        <span class="parw">→</span>
+      </a>
+    </div>
+  </article>
+
+  <!-- 02 我的服务 -->
+  <article class="facet f-services reveal" id="services">
+    <span class="svc-badge">Private · 仅自用</span>
+    <p class="label">Services · 对内</p>
+    <h3>我的服务</h3>
+    <p class="desc">完全私人的一层。自建服务、日常工具、只有自己需要的入口 —— 不对外解释，只对自己负责。</p>
+    <ul class="svc-list">
+      <li>记账台 · MARS 面板 <em>Finance</em></li>
+      <li>语音转写 · ASR 控制台 <em>Audio</em></li>
+      <li>知识库 · Obsidian 仓库 <em>Notes</em></li>
+      <li>同步中枢 · 服务监控 <em>Infra</em></li>
+      <li>剪藏箱 · 待整理队列 <em>Read</em></li>
+    </ul>
+  </article>
+
+  <!-- 03 设备探针 -->
+  <article class="facet f-probes reveal" id="probes">
+    <span class="fno">03 / 06</span>
+    <div class="probe-top">
+      <div>
+        <p class="label">Device Probes · 实时状态</p>
+        <h3>设备探针</h3>
+        <p class="desc">每一台属于我的机器都会回传心跳：在线与否、负载几何、上次响应在几秒前。</p>
+      </div>
+      <div class="probe-summary">
+        <span>在线 <b id="up-count">3</b> / 4</span>
+        <span>最近同步 <b id="sync-ago">12</b>s</span>
+        <button class="probe-refresh" id="probe-refresh" type="button">↻ 刷新探针</button>
+      </div>
+    </div>
+
+    <div class="probe-grid" id="probe-grid">
+      <div class="probe" data-cpu="6" data-mem="8" data-gpu="3">
+        <span class="st"></span>
+        <h4>开发主机</h4>
+        <p class="meta">Windows 11 · RTX 3060 Ti</p>
+        <div class="rows">
+          <div class="prow"><span>CPU</span><span class="blocks" data-metric="cpu"></span><span class="val">24%</span></div>
+          <div class="prow"><span>MEM</span><span class="blocks" data-metric="mem"></span><span class="val">31%</span></div>
+          <div class="prow"><span>GPU</span><span class="blocks" data-metric="gpu"></span><span class="val">12%</span></div>
+        </div>
+      </div>
+      <div class="probe" data-cpu="3" data-mem="4" data-gpu="5">
+        <span class="st"></span>
+        <h4>ASR 服务器</h4>
+        <p class="meta">faster-whisper · :8760</p>
+        <div class="rows">
+          <div class="prow"><span>CPU</span><span class="blocks" data-metric="cpu"></span><span class="val">09%</span></div>
+          <div class="prow"><span>MEM</span><span class="blocks" data-metric="mem"></span><span class="val">15%</span></div>
+          <div class="prow"><span>GPU</span><span class="blocks" data-metric="gpu"></span><span class="val">20%</span></div>
+        </div>
+      </div>
+      <div class="probe warn" data-cpu="7" data-mem="6" data-gpu="0">
+        <span class="st"></span>
+        <h4>云服务器</h4>
+        <p class="meta">CouchDB / Caddy · sync-hub</p>
+        <div class="rows">
+          <div class="prow"><span>CPU</span><span class="blocks" data-metric="cpu"></span><span class="val">28%</span></div>
+          <div class="prow"><span>MEM</span><span class="blocks" data-metric="mem"></span><span class="val">23%</span></div>
+          <div class="prow"><span>DSK</span><span class="blocks" data-metric="gpu"></span><span class="val">—</span></div>
+        </div>
+      </div>
+      <div class="probe down" data-cpu="0" data-mem="0" data-gpu="0">
+        <span class="st"></span>
+        <h4>移动终端</h4>
+        <p class="meta">上次在线 · 3 小时前</p>
+        <div class="rows">
+          <div class="prow"><span>CPU</span><span class="blocks" data-metric="cpu"></span><span class="val">—</span></div>
+          <div class="prow"><span>MEM</span><span class="blocks" data-metric="mem"></span><span class="val">—</span></div>
+          <div class="prow"><span>NET</span><span class="blocks" data-metric="gpu"></span><span class="val">—</span></div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 04 现在 -->
+  <article class="facet f-now reveal" id="now">
+    <span class="fno">04 / 06</span>
+    <p class="label">Now · 状态板</p>
+    <h3>现在在做什么</h3>
+    <p class="desc">一页永远过期的自述。比简历诚实，比动态克制。</p>
+    <div class="tagrow">
+      <span class="tagpill hot">Building MARS</span>
+      <span class="tagpill">Writing</span>
+      <span class="tagpill">Self-hosting</span>
+      <span class="tagpill">ASR</span>
+    </div>
+  </article>
+
+  <!-- 05 手记 -->
+  <article class="facet f-journal reveal" id="journal">
+    <span class="fno">05 / 06</span>
+    <p class="label">Journal · 手记</p>
+    <h3>最近写下的</h3>
+    <ul class="journal-list">
+      <li><time>10 / 18</time><span>把预算引擎拆成三层之后，终于敢改规则了。</span></li>
+      <li><time>10 / 11</time><span>自建同步第 30 天：没丢过一个字符。</span></li>
+      <li><time>09 / 27</time><span>语音识别服务空闲自动卸载 —— 想清楚了，暂缓。</span></li>
+    </ul>
+  </article>
+
+  <!-- 06 实验室 -->
+  <article class="facet f-lab reveal" id="lab">
+    <span class="fno">06 / 06</span>
+    <p class="label">Lab · 实验室</p>
+    <h3>碎片实验</h3>
+    <div class="lab-glyphs" aria-hidden="true">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+    <p class="desc" style="margin-top:16px;">失败的、半成品的、说不清是什么的东西。</p>
+  </article>
+
+</div>
+
+<!-- ============ SPECIMEN ============ -->
+<section class="specimen">
+  <div class="section-head reveal" style="padding:0;">
+    <span class="no">SEC / 02</span>
+    <h2>设计语汇 · Specimen</h2>
+    <span class="rule"></span>
+    <span class="note">Palette / Type / Motif</span>
+  </div>
+  <div class="spec-grid">
+    <div class="spec-block w4 reveal">
+      <p class="cap">Palette · 调色</p>
+      <div class="swatches">
+        <div class="swatch"><i style="background:#4c1417"></i>OXBLOOD&nbsp;&nbsp;#4C1417</div>
+        <div class="swatch"><i style="background:#a02c27"></i>RED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#A02C27</div>
+        <div class="swatch"><i style="background:#cf4632"></i>RED-BR&nbsp;&nbsp;&nbsp;#CF4632</div>
+        <div class="swatch"><i style="background:#c89241"></i>OCHRE&nbsp;&nbsp;&nbsp;&nbsp;#C89241</div>
+        <div class="swatch"><i style="background:#161112; border:1px solid var(--line)"></i>SURFACE&nbsp;&nbsp;#161112</div>
+        <div class="swatch"><i style="background:#ede4d6"></i>BONE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#EDE4D6</div>
+      </div>
+    </div>
+    <div class="spec-block w3 type-spec reveal">
+      <p class="cap">Type · 字体</p>
+      <div class="huge">Aa 构</div>
+      <div class="mid">Archivo Black</div>
+      <div class="mono">IBM Plex Mono · 0123456789</div>
+    </div>
+    <div class="spec-block w5 reveal">
+      <p class="cap">Motif · 构件</p>
+      <div class="motif" aria-hidden="true">
+        <span class="sq"></span><span class="sq"></span>
+        <span class="bar"></span><span class="tri"></span>
+      </div>
+      <p class="desc" style="font-size:12px;">斜切平面、45° 方形、发丝线与三角 —— 重复出现即成语汇。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COLOPHON ============ -->
+<footer class="colophon">
+  <h2>这就是<em>构成</em>。<br>还没有结束。</h2>
+  <div class="meta">
+    <div><a href="#top">回到顶端 ↑</a></div>
+    <div>Prototype v1 · 立体主义 / 暗红</div>
+    <div id="foot-year">© 2026 · Draft, 非最终文案</div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- clock ---- */
+  var tEl = document.getElementById("clock-time");
+  var dEl = document.getElementById("clock-date");
+  var nowEl = document.getElementById("now-time");
+  function tick(){
+    var n = new Date();
+    var p = function(x){ return String(x).padStart(2,"0"); };
+    var t = p(n.getHours())+":"+p(n.getMinutes())+":"+p(n.getSeconds());
+    if (tEl) tEl.textContent = t;
+    if (nowEl) nowEl.textContent = p(n.getHours())+":"+p(n.getMinutes());
+    if (dEl) dEl.textContent = n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate())+"  CST +08:00";
+  }
+  tick(); setInterval(tick, 1000);
+
+  var fy = document.getElementById("foot-year");
+  if (fy) fy.textContent = "© " + new Date().getFullYear() + " · Draft, 非最终文案";
+
+  /* ---- hero plane parallax ---- */
+  var planes = Array.prototype.slice.call(document.querySelectorAll(".plane"));
+  if (!reduce && planes.length){
+    var raf = null, mx = 0, my = 0;
+    window.addEventListener("mousemove", function(e){
+      mx = (e.clientX / window.innerWidth - .5);
+      my = (e.clientY / window.innerHeight - .5);
+      if (!raf){
+        raf = requestAnimationFrame(function(){
+          raf = null;
+          planes.forEach(function(pl){
+            var d = parseFloat(pl.getAttribute("data-depth") || 12);
+            pl.style.transform = "translate3d(" + (-mx*d) + "px," + (-my*d) + "px,0)" +
+              (pl.classList.contains("p5") ? " rotate(45deg)" :
+               pl.classList.contains("p6") ? " rotate(45deg)" :
+               pl.classList.contains("p4") ? " rotate(-24deg)" : "");
+          });
+        });
+      }
+    }, { passive:true });
+  }
+
+  /* ---- probe meters ---- */
+  var BLOCKS = 12;
+  function renderBlocks(){
+    document.querySelectorAll(".probe").forEach(function(pr){
+      pr.querySelectorAll(".blocks").forEach(function(b){
+        var metric = b.getAttribute("data-metric");
+        var v = parseFloat(pr.getAttribute("data-"+metric) || 0);
+        var on = Math.round(BLOCKS * v / 12);
+        var html = "";
+        for (var i = 0; i < BLOCKS; i++){
+          if (i < on) html += '<i class="' + (i >= BLOCKS-3 && v > 8 ? "hot" : "on") + '"></i>';
+          else html += "<i></i>";
+        }
+        b.innerHTML = html;
+      });
+    });
+  }
+  renderBlocks();
+
+  /* ---- probe refresh (demo of live state) ---- */
+  var syncAgo = document.getElementById("sync-ago");
+  var refreshBtn = document.getElementById("probe-refresh");
+  if (syncAgo){
+    var ago = 12;
+    setInterval(function(){
+      ago = ago >= 59 ? 1 : ago + 1;
+      syncAgo.textContent = ago;
+    }, 1000);
+  }
+  if (refreshBtn){
+    refreshBtn.addEventListener("click", function(){
+      document.querySelectorAll(".probe:not(.down)").forEach(function(pr){
+        ["cpu","mem","gpu"].forEach(function(m){
+          var base = parseFloat(pr.getAttribute("data-"+m) || 3);
+          var v = Math.max(1, Math.min(11, base + Math.round(Math.random()*4 - 2)));
+          pr.setAttribute("data-"+m, v);
+          var row = pr.querySelector('.val');
+          var rows = pr.querySelectorAll(".prow");
+          rows.forEach(function(r){
+            if (r.querySelector('.blocks').getAttribute("data-metric") === m){
+              r.querySelector(".val").textContent = String(Math.round(v/12*100)).padStart(2,"0") + "%";
+            }
+          });
+        });
+      });
+      renderBlocks();
+      if (syncAgo){ ago = 0; syncAgo.textContent = "0"; }
+    });
+  }
+
+  /* ---- reliable anchor navigation ---- */
+  function scrollToEl(el){
+    var startY = window.scrollY;
+    try { el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block:"start" }); }
+    catch (e) { el.scrollIntoView(); }
+    if (!reduce){
+      setTimeout(function(){
+        if (window.scrollY === startY){
+          try { el.scrollIntoView({ behavior:"instant", block:"start" }); }
+          catch (e) { el.scrollIntoView(); }
+        }
+      }, 320);
+    }
+  }
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener("click", function(e){
+      var id = a.getAttribute("href").slice(1);
+      var target = id ? document.getElementById(id) : null;
+      if (id === "top"){
+        e.preventDefault();
+        window.scrollTo({ top:0, behavior:"instant" });
+        history.replaceState(null, "", location.pathname);
+      } else if (target){
+        e.preventDefault();
+        scrollToEl(target);
+        history.replaceState(null, "", "#" + id);
+      } else if (id === ""){
+        e.preventDefault();
+        scrollToEl(document.body);
+        history.replaceState(null, "", location.pathname);
+      }
+    });
+  });
+
+  /* ---- reveal on scroll ---- */
+  if (!reduce && "IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting){
+          en.target.classList.add("in");
+          io.unobserve(en.target);
+        }
+      });
+    }, { threshold:.12 });
+    document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("in"); });
+  }
+})();
+</script>
+</body>
+</html>
