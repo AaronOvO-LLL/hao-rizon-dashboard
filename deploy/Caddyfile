@@ -37,7 +37,10 @@ hao-rizon.com {
 	redir https://www.hao-rizon.com{uri} permanent
 }
 
-# 以后接别的服务，就在这里加站点块。例如 Obsidian 同步中枢（CouchDB 只监听 127.0.0.1:5984）：
-# sync.hao-rizon.com {
-# 	reverse_proxy 127.0.0.1:5984
-# }
+# Obsidian 同步中枢：CouchDB 在 Docker 里只监听 127.0.0.1:5984
+#（配置仓库 obsidian-sync-hub，/srv/obsidian-sync-hub）
+sync.hao-rizon.com {
+	reverse_proxy 127.0.0.1:5984
+}
+
+# 以后接别的服务，继续在下面加站点块（保持一台机器一个 Caddy 边缘）。
