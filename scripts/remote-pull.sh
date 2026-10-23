@@ -26,7 +26,7 @@ echo "  版本: $(git log -1 --format='%h %s')"
 if [ "$before" != "$after" ] && git diff --name-only "$before" "$after" 2>/dev/null | grep -qx 'deploy/Caddyfile'; then
 	echo "  Caddyfile 有变更 → 校验后重载"
 	if sudo -n true 2>/dev/null; then
-		if sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null; then
+		if sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
 			sudo systemctl reload caddy
 			echo "  ✓ 已重载 caddy"
 		else

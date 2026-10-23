@@ -48,7 +48,9 @@ python -m http.server 8080 --directory public
 
 必须用 HTTP 服务打开，不要双击 `file://`——`/assets/...` 这类根路径在 `file://` 下会失效。
 
-## 上线（一次性）
+## 上线（已完成，以下为复现步骤）
+
+> **2026-10-23 已上线**：<https://www.hao-rizon.com> 返回 200，Let's Encrypt 证书有效至 2027-01-21，HTTP/2 + HTTP/3（h3）均已启用，首页 22.7 KB、单文件零外部请求。
 
 顺序不能颠倒：**先放行端口 → 再装 Caddy → 站点才有证书**。Let's Encrypt 要在域名可达的 80/443 上做校验，端口不通就签不出证书。
 
@@ -56,7 +58,11 @@ python -m http.server 8080 --directory public
 
 安全组入站规则需要 TCP **80** 和 **443** 对 `0.0.0.0/0` 放行。本机 ufw 是第二道，`bootstrap-server.sh` 会开。
 
-> 2026-10-23 从本机实测：22 通；80 返回 connection refused（说明包能到主机、只差监听进程，安全组大概率已放行 80）；**443 超时（大概率安全组没放行，需要去加规则）**。
+> 端口诊断经验（RST 和超时不是一回事）：
+> - **连接被拒绝（RST）** = 包到了主机，只是没有进程监听 → 网络层面已经通了
+> - **超时** = 包在中间就被丢了 → 安全组 / ufw / iptables 还有一道没放行
+>
+> 这次上线就是靠这个区分定位的：443 起初超时（安全组没放行），放行后变成 RST，装完 Caddy 直接正常。
 
 ### 2. 服务器准备
 
@@ -112,6 +118,7 @@ git reset --hard <commit>
 | 改了没生效 | 没发布或浏览器缓存 | `git -C /srv/haorizon log -1`；强制刷新 |
 | 502（未来接反代时） | 上游服务没起 | `systemctl status <服务>`；`curl 127.0.0.1:<端口>` |
 | 大陆访问弹备案提示 | 未备案 | 你已经备案了；若换域名需重新备案 |
+| SSH `Permission denied (publickey)` | 密钥写进了别的用户 / 权限太宽 / 该用户被禁登 | `sudo -u ubuntu ssh-keygen -lf /home/ubuntu/.ssh/authorized_keys` 看指纹；`sudo journalctl -u ssh -n 20` 看原因（`ROOT LOGIN REFUSED` = root 登录被禁用，属正常） |
 
 ## 接下来要一起定的
 
