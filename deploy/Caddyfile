@@ -1,0 +1,42 @@
+# Hao-rizon 站点 —— Caddy 2 配置（服务器唯一入口）
+#
+# 服务器上 /etc/caddy/Caddyfile 是指向本文件的软链接（由 scripts/install-site.sh 建立），
+# 所以这里改了 + git push，就是改了服务器配置；重载由 scripts/deploy.sh 检测并执行。
+#
+# 手动重载：sudo systemctl reload caddy
+# 手动校验：sudo caddy validate --config /etc/caddy/Caddyfile
+
+www.hao-rizon.com {
+	root * /srv/haorizon/public
+	encode gzip zstd
+
+	# 静态站没有路由：找不到就 404，不要回落首页（否则错链也返回 200）
+	try_files {path} {path}/ =404
+	file_server
+
+	# 页面不缓存（一发布就能看到新版），带指纹的资源长缓存
+	header /index.html Cache-Control "no-cache"
+	header /assets/* Cache-Control "public, max-age=604800"
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options SAMEORIGIN
+	}
+
+	# 自定义 404 页
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}
+
+# 裸域 hao-rizon.com 统一跳到 www（两个名字都由 Caddy 自动申请证书）
+hao-rizon.com {
+	redir https://www.hao-rizon.com{uri} permanent
+}
+
+# 以后接别的服务，就在这里加站点块。例如 Obsidian 同步中枢（CouchDB 只监听 127.0.0.1:5984）：
+# sync.hao-rizon.com {
+# 	reverse_proxy 127.0.0.1:5984
+# }

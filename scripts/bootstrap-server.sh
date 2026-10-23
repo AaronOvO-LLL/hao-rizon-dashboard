@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 在全新的 Ubuntu/Debian 服务器上执行一次（需要 root）。
-# 目的：装好证书、Git、防火墙三件套，让后续部署只需要 git pull。
+# 装 Caddy（官方源，自动 HTTPS）+ Git + 防火墙，之后部署只需要 git pull。
 # 用法：sudo bash scripts/bootstrap-server.sh
 set -euo pipefail
 
@@ -11,12 +11,22 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-echo "▶ 更新软件包索引"
+echo "▶ 安装基础工具"
 apt-get update -qq
-
-echo "▶ 安装 nginx / git / certbot / ufw"
 apt-get install -y --no-install-recommends \
-	nginx git curl ca-certificates ufw certbot python3-certbot-nginx
+	ca-certificates curl gnupg git ufw \
+	debian-keyring debian-archive-keyring apt-transport-https
+
+echo "▶ 添加 Caddy 官方软件源"
+if [ ! -f /usr/share/keyrings/caddy-stable-archive-keyring.gpg ]; then
+	curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' |
+		gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+	curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+		>/etc/apt/sources.list.d/caddy-stable.list
+fi
+
+apt-get update -qq
+apt-get install -y --no-install-recommends caddy
 
 echo "▶ 放行 22 / 80 / 443（本机防火墙）"
 ufw allow OpenSSH >/dev/null
@@ -24,15 +34,16 @@ ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 ufw --force enable >/dev/null
 
-systemctl enable --now nginx
+systemctl enable --now caddy
 
-# 端口冲突自检：如果有别的服务（例如 Caddy 容器）已经在占 80/443，这里会暴露出来
-if ss -ltnp 2>/dev/null | grep -qE ':(80|443)\s' ; then
-	echo "ℹ 80/443 已有进程在监听："
+echo "▶ 端口自检"
+if ss -ltnp 2>/dev/null | grep -qE ':(80|443)\s'; then
 	ss -ltnp 2>/dev/null | grep -E ':(80|443)\s' || true
-	echo "  如果那是 Caddy（obsidian-sync-hub），不要用 nginx 方案，改用 deploy/Caddyfile.site。"
+	echo "  ↑ 如果占用者不是 caddy，先停掉它：Caddy 需要独占 80/443"
+fi
+if command -v nginx >/dev/null 2>&1; then
+	echo "  ⚠ 系统里装了 nginx：如果它在跑，会和 Caddy 抢 80/443 —— sudo systemctl disable --now nginx"
 fi
 
 echo "✓ 完成。接下来在服务器上："
-echo "   1) git clone <仓库地址> /srv/haorizon"
-echo "   2) cd /srv/haorizon && sudo bash scripts/install-site.sh <域名> <证书邮箱>"
+echo "   cd /srv/haorizon && sudo bash scripts/install-site.sh"

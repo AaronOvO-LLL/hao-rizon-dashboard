@@ -1,56 +1,52 @@
 #!/usr/bin/env bash
-# 在服务器上执行一次：安装 nginx 站点配置 + 申请证书。
-# 用法：sudo bash scripts/install-site.sh <域名> [证书邮箱]
-# 例：  sudo bash scripts/install-site.sh hao-rizon.com me@example.com
+# 在服务器上执行一次：把 /etc/caddy/Caddyfile 指向本仓库的配置，校验并重载。
+# 用法：sudo bash scripts/install-site.sh [域名]
+# 之后每次改配置只需要 deploy.sh（它会自动重载）。
 set -euo pipefail
 
-DOMAIN="${1:?用法: sudo bash scripts/install-site.sh <域名> [证书邮箱]}"
-EMAIL="${2:-}"
 SITE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-NAME=haorizon
-CONF="/etc/nginx/sites-available/$NAME.conf"
+DOMAIN="${1:-www.hao-rizon.com}"
 
 if [ "$(id -u)" -ne 0 ]; then
-	echo "请用 root 运行：sudo bash $0 $*" >&2
+	echo "请用 root 运行：sudo bash $0" >&2
 	exit 1
 fi
-if [ ! -d "$SITE_DIR/public" ]; then
-	echo "找不到 $SITE_DIR/public —— 请在仓库根目录里运行本脚本" >&2
+if [ ! -f "$SITE_DIR/deploy/Caddyfile" ]; then
+	echo "找不到 $SITE_DIR/deploy/Caddyfile —— 请在仓库根目录里运行本脚本" >&2
 	exit 1
 fi
-
-# 端口被别的进程占着时，先讲清楚，免得 nginx -t 通过但网站打不开
-if ss -ltnp 2>/dev/null | grep -qE ':80\s' && ! ss -ltnp 2>/dev/null | grep -qE ':80\s.*nginx'; then
-	echo "⚠ 80 端口已被非 nginx 进程占用：" >&2
-	ss -ltnp 2>/dev/null | grep -E ':80\s' >&2 || true
-	echo "  改用 Caddy 方案：见 deploy/Caddyfile.site" >&2
+if ! command -v caddy >/dev/null 2>&1; then
+	echo "caddy 未安装：先跑 sudo bash scripts/bootstrap-server.sh" >&2
 	exit 1
 fi
 
-echo "▶ 写入 $CONF（域名 $DOMAIN，根目录 $SITE_DIR/public）"
-sed -e "s|__DOMAIN__|$DOMAIN|g" \
-	-e "s|__ROOT__|$SITE_DIR/public|g" \
-	-e "s|__NAME__|$NAME|g" \
-	"$SITE_DIR/deploy/nginx-site.conf" >"$CONF"
-
-ln -sfn "$CONF" "/etc/nginx/sites-enabled/$NAME.conf"
-[ -e /etc/nginx/sites-enabled/default ] && rm -f /etc/nginx/sites-enabled/default
-
-# 静态文件要让 nginx 的 worker 读得到：目录可执行、文件可读
+# Caddy 以 caddy 用户读配置和站点文件，路径上每一层都要能穿过去
 chmod o+x "$(dirname "$SITE_DIR")" 2>/dev/null || true
-chmod -R o+rX "$SITE_DIR/public"
+chmod -R o+rX "$SITE_DIR/public" "$SITE_DIR/deploy"
 
 echo "▶ 校验配置"
-nginx -t
-systemctl reload nginx
-echo "✓ 站点已启用（HTTP）"
+caddy validate --config "$SITE_DIR/deploy/Caddyfile" --adapter caddyfile
 
-if [ -n "$EMAIL" ]; then
-	echo "▶ 申请 Let's Encrypt 证书并自动配置 HTTPS"
-	certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --redirect --non-interactive
-	certbot renew --dry-run | tail -3
-	echo "✓ HTTPS 就绪。验证：curl -I https://$DOMAIN"
-else
-	echo "ℹ 未提供邮箱，跳过证书。稍后执行："
-	echo "   sudo certbot --nginx -d $DOMAIN -m <你的邮箱> --agree-tos --redirect"
-fi
+echo "▶ 让 /etc/caddy/Caddyfile 指向仓库里的配置（单一来源，不在服务器上分叉）"
+ln -sfn "$SITE_DIR/deploy/Caddyfile" /etc/caddy/Caddyfile
+
+echo "▶ 重载 Caddy"
+systemctl reload caddy 2>/dev/null || systemctl restart caddy
+sleep 2
+
+echo "▶ 等待证书签发 / 站点响应（最多 45 秒）"
+for _ in $(seq 1 15); do
+	code=$(curl -sS -o /dev/null -w '%{http_code}' -m 8 "https://$DOMAIN/" 2>/dev/null || true)
+	if [ "$code" = "200" ]; then
+		echo "✓ https://$DOMAIN/ 已返回 200"
+		exit 0
+	fi
+	sleep 3
+done
+
+echo "⚠ 45 秒内没拿到 200，排查顺序："
+echo "   1. dig +short $DOMAIN          # 域名是否指向本机"
+echo "   2. sudo systemctl status caddy"
+echo "   3. sudo journalctl -u caddy -n 50 --no-pager"
+echo "   4. 腾讯云安全组是否放行 80/443（和本机 ufw 是两道）"
+exit 1
