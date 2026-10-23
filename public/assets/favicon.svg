@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Hao-rizon">
+  <rect width="64" height="64" fill="#171615"/>
+  <rect x="9" y="9" width="46" height="46" fill="#a73531"/>
+  <path d="M22 21v22M42 21v22M22 32h20" stroke="#e4ddd0" stroke-width="4.5" fill="none"/>
+</svg>

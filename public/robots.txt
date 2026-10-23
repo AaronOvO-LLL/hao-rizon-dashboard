@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# 单页站点，暂无 sitemap；接入多页后再补
