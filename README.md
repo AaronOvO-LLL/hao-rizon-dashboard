@@ -59,11 +59,14 @@ git push -u origin main
 ```bash
 ssh ubuntu@<公网IP>
 sudo apt-get update && sudo apt-get install -y git      # 镜像一般已装
-sudo git clone https://github.com/AaronOvO-LLL/<仓库名>.git /srv/haorizon
+sudo mkdir -p /srv/haorizon && sudo chown "$USER":"$USER" /srv/haorizon
+git clone https://github.com/AaronOvO-LLL/<仓库名>.git /srv/haorizon
 cd /srv/haorizon
 sudo bash scripts/bootstrap-server.sh                    # 装 nginx + certbot + 防火墙
 sudo bash scripts/install-site.sh <域名> <证书邮箱>       # 装站点 + Let's Encrypt 证书
 ```
+
+> 注意 `git clone` 用你自己的用户执行、不要 `sudo`——否则 `/srv/haorizon` 归 root，之后 `deploy.sh` 推不进去。
 
 走 **Caddy 路线**时跳过上面两条 nginx 命令，改为把 `deploy/Caddyfile.site` 的站点块合并进现有 Caddyfile（注意 Docker 要挂载 `/srv/haorizon/public`），然后 reload Caddy。
 
